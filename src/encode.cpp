@@ -550,6 +550,14 @@ static void encodeBlock(
 
 template<>
 void encodeOp(State &st, mlir::arith::AddFOp op, bool) {
+  auto flags = op.getFastmath();
+
+  bool hasReassoc = mlir::arith::bitEnumContainsAll(
+      flags, mlir::arith::FastMathFlags::reassoc);
+
+  llvm::errs() << "[DEBUG] arith.addf reassoc = "
+               << hasReassoc << "\n";
+
   mlir::Value arg0 = op.getOperand(0);
   mlir::Value arg1 = op.getOperand(1);
 
@@ -3281,6 +3289,17 @@ static void encodeReductionLoopBodyAndOutput(
     throw UnsupportedException(the_op, std::move(errmsg));
 
   auto sumvar = ops.back().getOperand(0).getDefiningOp()->getOperand(idx);
+
+  if (auto addOp = llvm::dyn_cast<mlir::arith::AddFOp>(
+        ops.back().getOperand(0).getDefiningOp())) {
+
+    bool hasReassoc = mlir::arith::bitEnumContainsAll(
+        addOp.getFastmath(),
+        mlir::arith::FastMathFlags::reassoc);
+
+    llvm::errs() << "[DEBUG] linalg reduction reassoc = "
+                 << hasReassoc << "\n";
+  }
 
   // TODO: deal with merging memories
   Expr opsWelldef = Expr::mkBool(true);
